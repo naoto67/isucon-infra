@@ -98,6 +98,10 @@ resource "aws_instance" "app" {
     network_interface_id = element(aws_network_interface.private_ip, count.index).id
     device_index         = 0
   }
+
+  tags = {
+    Name = "isucon-instance"
+  }
 }
 
 resource "aws_eip" "default" {
