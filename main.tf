@@ -1,19 +1,7 @@
 provider "aws" {
   region  = "ap-northeast-1"
-  profile = "MY_ROOT"
+  profile = var.profile
 }
-
-// spot fleetリクエストを利用するためのロール作成
-// resource "aws_iam_role" "spotfleet_role" {
-//   name               = "spotfleet_role"
-//   assume_role_policy = data.aws_iam_policy_document.assume_spotfleet.json
-// }
-//
-// resource "aws_iam_policy_attachment" "spotfleet_policy_attachment" {
-//   name       = "spotfleet_policy_attachment"
-//   roles      = [aws_iam_role.spotfleet_role.id]
-//   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2SpotFleetTaggingRole"
-// }
 
 // VPC setting
 resource "aws_vpc" "default" {
@@ -69,10 +57,10 @@ resource "aws_default_security_group" "default" {
   vpc_id = aws_vpc.default.id
 
   ingress {
-    protocol  = -1
-    self      = true
-    from_port = 0
-    to_port   = 0
+    protocol    = -1
+    self        = true
+    from_port   = 0
+    to_port     = 0
     cidr_blocks = ["0.0.0.0/0"]
   }
 
@@ -86,36 +74,11 @@ resource "aws_default_security_group" "default" {
 
 resource "aws_key_pair" "isucon_key" {
   key_name   = "isucon-key"
-  public_key = file("~/.ssh/id_rsa.pub")
+  public_key = file(var.ssh_file_path)
 }
 
-// ec2
-// spot instance pattern
-// resource "aws_spot_fleet_request" "default" {
-//   iam_fleet_role = aws_iam_role.spotfleet_role.arn
-//
-//   target_capacity                     = 3
-//   terminate_instances_with_expiration = true
-//   wait_for_fulfillment                = "true"
-//
-//   launch_specification {
-//     ami                         = "ami-0cfa3caed4b487e77"
-//     instance_type               = "t3.small"
-//     spot_price                  = "0.009"
-//     key_name                    = aws_key_pair.isucon_key.id
-//     vpc_security_group_ids      = [aws_default_security_group.default.id]
-//     subnet_id                   = aws_subnet.public.id
-//     associate_public_ip_address = true
-//
-//     tags = {
-//       Name = "isucon-instance"
-//     }
-//   }
-// }
-//
-
 resource "aws_network_interface" "private_ip" {
-  count = 3
+  count       = 3
   subnet_id   = aws_subnet.public.id
   private_ips = [format("10.0.1.10%d", count.index + 1)]
 
@@ -127,10 +90,9 @@ resource "aws_network_interface" "private_ip" {
 resource "aws_instance" "app" {
   count = 3
 
-  ami                         = "ami-0cfa3caed4b487e77"
-  instance_type               = "t3.small"
-  key_name    = aws_key_pair.isucon_key.id
-  // associate_public_ip_address = true
+  ami           = "ami-0cfa3caed4b487e77"
+  instance_type = "t3.small"
+  key_name      = aws_key_pair.isucon_key.id
 
   network_interface {
     network_interface_id = element(aws_network_interface.private_ip, count.index).id
@@ -140,7 +102,7 @@ resource "aws_instance" "app" {
 
 resource "aws_eip" "default" {
   count = 3
-  vpc = true
+  vpc   = true
 
   instance = element(aws_instance.app, count.index).id
 }
